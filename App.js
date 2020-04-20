@@ -1,15 +1,24 @@
 import * as React from "react";
 import { Platform, StatusBar, StyleSheet, View } from "react-native";
+import { Root } from "native-base";
 import { SplashScreen } from "expo";
 import * as Font from "expo-font";
+import * as SQLite from "expo-sqlite";
 import { Ionicons } from "@expo/vector-icons";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 
-import BottomTabNavigator from "./navigation/BottomTabNavigator";
-import useLinking from "./navigation/useLinking";
+import BottomTabNavigator from "./src/navigation/BottomTabNavigator";
+import useLinking from "./src/navigation/useLinking";
+
+import { Text, Button } from "native-base";
 
 const Stack = createStackNavigator();
+
+const db = SQLite.openDatabase("database.db");
+db.exec([{ sql: "PRAGMA foreign_keys = ON;", args: [] }], false, () =>
+  console.log("Foreign keys turned on")
+);
 
 export default function App(props) {
   const [isLoadingComplete, setLoadingComplete] = React.useState(false);
@@ -28,7 +37,7 @@ export default function App(props) {
 
         // Load fonts
         await Font.loadAsync({
-          "space-mono": require("./assets/fonts/SpaceMono-Regular.ttf"),
+          "space-mono": require("./src/assets/fonts/SpaceMono-Regular.ttf"),
           Roboto: require("native-base/Fonts/Roboto.ttf"),
           Roboto_medium: require("native-base/Fonts/Roboto_medium.ttf"),
           ...Ionicons.font
@@ -45,21 +54,31 @@ export default function App(props) {
     loadResourcesAndDataAsync();
   }, []);
 
+  React.useEffect(() => {
+    db.transaction((tx) => {
+      tx.executeSql(
+        "create table if not exists oracao(id integer primary key not null, id_group integer default null, title text, description text, confirmed bool default 0, date_created DATE DEFAULT NULL);"
+      );
+    });
+  }, []);
+
   if (!isLoadingComplete && !props.skipLoadingScreen) {
     return null;
   } else {
     return (
-      <View style={styles.container}>
-        {Platform.OS === "ios" && <StatusBar barStyle="default" />}
-        <NavigationContainer
-          ref={containerRef}
-          initialState={initialNavigationState}
-        >
-          <Stack.Navigator>
-            <Stack.Screen name="Root" component={BottomTabNavigator} />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </View>
+      <Root>
+        <View style={styles.container}>
+          {Platform.OS === "ios" && <StatusBar barStyle="default" />}
+          <NavigationContainer
+            ref={containerRef}
+            initialState={initialNavigationState}
+          >
+            <Stack.Navigator headerMode="none">
+              <Stack.Screen name="Root" component={BottomTabNavigator} />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </View>
+      </Root>
     );
   }
 }
